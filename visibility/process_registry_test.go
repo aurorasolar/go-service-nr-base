@@ -2,7 +2,7 @@ package visibility
 
 import (
 	"context"
-	"github.com/aws/aws-xray-sdk-go/xray"
+	newrelic "github.com/newrelic/go-agent"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"sync"
@@ -11,7 +11,8 @@ import (
 )
 
 func TestProcessRegistry(t *testing.T) {
-	reg := NewProcessRegistry("Suffix1", zap.NewNop(), nil, NullSink)
+	app := makeTestApp()
+	reg := NewProcessRegistry("Suffix1", zap.NewNop(), app, NullSink)
 
 	// Non-existing finishes are fine
 	<-reg.GetWaitChannel("procName")
@@ -61,7 +62,8 @@ func TestProcessRegistry(t *testing.T) {
 }
 
 func TestNoDups(t *testing.T) {
-	reg := NewProcessRegistry("Suffix1", zap.NewNop(), nil, NullSink)
+	app := makeTestApp()
+	reg := NewProcessRegistry("Suffix1", zap.NewNop(), app, NullSink)
 
 	p := reg.CreateProcessContext("proc1")
 	p.Run(func(ctx context.Context) error {return nil})
@@ -71,7 +73,8 @@ func TestNoDups(t *testing.T) {
 }
 
 func TestPeriodic(t *testing.T) {
-	reg := NewProcessRegistry("Suffix1", zap.NewNop(), nil, NullSink)
+	app := makeTestApp()
+	reg := NewProcessRegistry("Suffix1", zap.NewNop(), app, NullSink)
 
 	progressChan := make(chan bool)
 
@@ -92,7 +95,8 @@ func TestPeriodic(t *testing.T) {
 }
 
 func TestProcessRegistryInstrumentation(t *testing.T) {
-	reg := NewProcessRegistry("Suffix1", zap.NewNop(), nil, NullSink)
+	app := makeTestApp()
+	reg := NewProcessRegistry("Suffix1", zap.NewNop(), app, NullSink)
 
 	p := reg.CreateProcessContext("Proc1")
 	good := false
@@ -100,14 +104,10 @@ func TestProcessRegistryInstrumentation(t *testing.T) {
 		// Check that the logger context is there
 		CL(ctx)
 		CLS(ctx)
+
 		// Check for the segment
-		seg := xray.GetSegment(ctx)
-		if seg == nil || seg.HTTP.Request.URL != "Proc1Suffix1" {
-			return nil
-		}
-		// Check that the opname is set
-		val := seg.Metadata[MetricsNamespaceName][OperationNameKey]
-		if val.(string) != "Proc1Suffix1" {
+		trans := newrelic.FromContext(ctx)
+		if trans == nil {
 			return nil
 		}
 

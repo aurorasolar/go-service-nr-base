@@ -98,8 +98,8 @@ func TestRunInstrumented(t *testing.T) {
 			return fmt.Errorf("test err")
 		})
 
+	assert.NotNil(t, seg)
 	assert.Error(t, err, "test err")
-	seg.Header()
 
 	met := getMetrics(app)
 	evt := getEvt(met, 0)
@@ -136,7 +136,7 @@ func TestRunInstrumentedPanic(t *testing.T) {
 
 	stk := getStack(met, 0)
 	// This is the line number of the panic() call above. Can break during refactoring.
-	assert.Equal(t, float64(119), stk[0].(map[string]interface{})["line"])
+	assert.Equal(t, float64(122), stk[0].(map[string]interface{})["line"])
 	assert.True(t, strings.HasSuffix(stk[0].(map[string]interface{})["filepath"].(string),
 		"runner_test.go"))
 }

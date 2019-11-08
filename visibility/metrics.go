@@ -4,7 +4,6 @@ import (
 	"context"
 	. "github.com/aurorasolar/go-service-base/utils"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	"github.com/aws/aws-xray-sdk-go/xray"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/newrelic/newrelic-telemetry-sdk-go/telemetry"
 	"sync"
@@ -86,11 +85,6 @@ func (e MetricEntry) Normalize() (float64, cloudwatch.StandardUnit) {
 		return e.Val, cloudwatch.StandardUnitNone
 	}
 	return e.Val, cloudwatch.StandardUnitNone
-}
-
-func SetOperationNameForMetrics(segment *xray.Segment, opName string) {
-	PanicIfF(segment == nil, "No XRay segment attached to the context")
-	_ = segment.AddMetadataToNamespace(MetricsNamespaceName, OperationNameKey, opName)
 }
 
 func MakeMetricContext(ctx context.Context, opName string) context.Context {

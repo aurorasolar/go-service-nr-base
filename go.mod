@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/aws/aws-sdk-go-v2 v0.10.0
-	github.com/aws/aws-xray-sdk-go v1.0.0-rc.13
 	github.com/getkin/kin-openapi v0.2.1-0.20190729060947-8785b416cb32
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jackc/pgx/v4 v4.0.0-pre1
@@ -24,5 +23,3 @@ require (
 )
 
 replace github.com/labstack/echo/v4 v4.1.6 => github.com/Cyberax/echo/v4 v4.1.6-fork
-
-replace github.com/aws/aws-xray-sdk-go v1.0.0-rc.13 => github.com/Cyberax/aws-xray-sdk-go v1.0.0-rc.13-mine5

@@ -5,7 +5,6 @@ import (
 	"github.com/aurorasolar/go-service-base/visibility"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
@@ -16,8 +15,6 @@ func TestSchemer(t *testing.T) {
 	defer ddb.Close()
 
 	ctx := visibility.ImbueContext(context.Background(), zap.NewNop())
-	ctx, seg := xray.BeginSegment(ctx, "nope")
-	seg.Sampled = false
 
 	schemer := NewDynamoDbSchemer("_suffix", ddb.Config, true)
 	tables := []Table{
