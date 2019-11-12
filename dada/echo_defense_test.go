@@ -3,7 +3,7 @@ package dada
 import (
 	"context"
 	"fmt"
-	"github.com/aurorasolar/go-service-base/utils"
+	"github.com/aurorasolar/go-service-nr-base/utils"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"

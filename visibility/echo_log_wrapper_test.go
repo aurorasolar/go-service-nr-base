@@ -1,7 +1,7 @@
 package visibility
 
 import (
-	"github.com/aurorasolar/go-service-base/utils"
+	"github.com/aurorasolar/go-service-nr-base/utils"
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 	"testing"

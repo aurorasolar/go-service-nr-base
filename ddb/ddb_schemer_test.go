@@ -2,7 +2,7 @@ package ddb
 
 import (
 	"context"
-	"github.com/aurorasolar/go-service-base/visibility"
+	"github.com/aurorasolar/go-service-nr-base/visibility"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/stretchr/testify/assert"

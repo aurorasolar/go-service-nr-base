@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aurorasolar/go-service-base/utils"
+	"github.com/aurorasolar/go-service-nr-base/utils"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"

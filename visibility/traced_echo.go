@@ -9,7 +9,7 @@ package visibility
 
 import (
 	"fmt"
-	. "github.com/aurorasolar/go-service-base/utils"
+	. "github.com/aurorasolar/go-service-nr-base/utils"
 	"github.com/labstack/echo/v4"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/newrelic/go-agent/_integrations/logcontext"

@@ -3,7 +3,7 @@ package visibility
 import (
 	"context"
 	"fmt"
-	"github.com/aurorasolar/go-service-base/utils"
+	"github.com/aurorasolar/go-service-nr-base/utils"
 	newrelic "github.com/newrelic/go-agent"
 	"go.uber.org/zap"
 	"runtime"

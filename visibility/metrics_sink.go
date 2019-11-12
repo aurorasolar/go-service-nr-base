@@ -2,7 +2,7 @@ package visibility
 
 import (
 	"context"
-	"github.com/aurorasolar/go-service-base/utils"
+	"github.com/aurorasolar/go-service-nr-base/utils"
 	"github.com/newrelic/newrelic-telemetry-sdk-go/telemetry"
 	"net/http"
 )
