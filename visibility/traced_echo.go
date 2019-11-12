@@ -8,9 +8,11 @@
 package visibility
 
 import (
+	"fmt"
 	. "github.com/aurorasolar/go-service-base/utils"
 	"github.com/labstack/echo/v4"
 	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent/_integrations/logcontext"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -83,24 +85,36 @@ func (z *traceAndLogMiddleware) attachXrayTrace(c echo.Context) newrelic.Transac
 	// while storing the regular one in annotations
 	c.Request().Header.Set(echo.HeaderXRequestID, trans.GetTraceMetadata().TraceID)
 
-	//seg.GetHTTP().GetRequest().Method = r.Method
-	//host := r.Host
-	//if z.opts.HostNameOverride != "" {
-	//	host = z.opts.HostNameOverride
-	//}
-	//seg.GetHTTP().GetRequest().URL = c.Scheme() + "://" + host + r.URL.Path
-	//seg.GetHTTP().GetRequest().ClientIP = c.RealIP()
-	//seg.GetHTTP().GetRequest().XForwardedFor = c.RealIP() != r.RemoteAddr
-	//seg.GetHTTP().GetRequest().UserAgent = r.UserAgent()
-
-	// And add the Trace ID to response immediately
-	//c.Response().Header().Set(xray.TraceIDHeaderKey, trans.GetTraceMetadata().TraceID)
 	return trans
 }
 
-func (z *traceAndLogMiddleware) createLogger(c echo.Context, rid string) *zap.Logger {
+func (z *traceAndLogMiddleware) createLogger(c echo.Context,
+	trans newrelic.Transaction) *zap.Logger {
+
+	md := trans.GetLinkingMetadata()
+
+	fields := []zap.Field{
+		zap.String(logcontext.KeyTraceID, md.TraceID),
+		zap.String(logcontext.KeySpanID, md.SpanID),
+		zap.String(logcontext.KeyEntityName, md.EntityName),
+		zap.String(logcontext.KeyEntityType, md.EntityType),
+		zap.String(logcontext.KeyEntityGUID, md.EntityGUID),
+		zap.String(logcontext.KeyHostname, md.Hostname),
+	}
+
+	// TODO: defend against large headers
+	h := c.Request().Header
+	reqIdHeader := h.Get("x-amzn-trace-id")
+	if reqIdHeader != "" {
+		fields = append(fields, zap.String("AmznTraceId", reqIdHeader))
+	}
+	reqIdHeader = h.Get(echo.HeaderXRequestID)
+	if reqIdHeader != "" {
+		fields = append(fields, zap.String("RequestId", reqIdHeader))
+	}
+
 	// Contextualize the logger
-	logger := z.opts.Logger.Named("HTTP").With(zap.String("RequestID", rid))
+	logger := z.opts.Logger.Named("HTTP").With(fields...)
 
 	// Save the logger in the Echo context in case middleware needs it
 	c.Set(ZapLoggerEchoContextKey, logger.Sugar())
@@ -114,7 +128,7 @@ func (z *traceAndLogMiddleware) createLogger(c echo.Context, rid string) *zap.Lo
 }
 
 func (z *traceAndLogMiddleware) prepareCommonLogFields(c echo.Context,
-	reqDuration time.Duration, rid string) []zap.Field {
+	reqDuration time.Duration) []zap.Field {
 
 	req := c.Request()
 	res := c.Response()
@@ -130,10 +144,15 @@ func (z *traceAndLogMiddleware) prepareCommonLogFields(c echo.Context,
 		p = "/"
 	}
 
+	host := req.Host
+	if z.opts.HostNameOverride != "" {
+		host = z.opts.HostNameOverride
+	}
+
 	return []zap.Field{
 		zap.String("path", p),
 		zap.String("remote_ip", c.RealIP()),
-		zap.String("host", req.Host),
+		zap.String("host", host),
 		zap.String("method", req.Method),
 		zap.String("uri", req.RequestURI),
 		zap.String("referer", req.Referer()),
@@ -153,10 +172,8 @@ func (z *traceAndLogMiddleware) instrumentRequest(c echo.Context) error {
 	trans := z.attachXrayTrace(c)
 	defer func() { _ = trans.End() }()
 
-	rid := trans.GetTraceMetadata().TraceID
-
 	// Create a logger with this Request ID
-	logger := z.createLogger(c, rid) // Mutates the c.Request().Context
+	logger := z.createLogger(c, trans) // Mutates the c.Request().Context
 	logger.Info("Starting request")
 
 	start := time.Now()
@@ -169,7 +186,11 @@ func (z *traceAndLogMiddleware) instrumentRequest(c echo.Context) error {
 
 		// Register the stack trace inside the XRay segment
 		stack := NewShortenedStackTrace(5, report)
-		_ = trans.NoticeError(stack)
+		_ = trans.NoticeError(newrelic.Error{
+			Message:    fmt.Sprintf("%v", report),
+			Class:      "Panic",
+			Stack:      stack.stack,
+		})
 
 		// Send the 500 error along the way...
 		if !c.Response().Committed {
@@ -184,7 +205,7 @@ func (z *traceAndLogMiddleware) instrumentRequest(c echo.Context) error {
 			}
 		}
 
-		ch := z.prepareCommonLogFields(c, time.Now().Sub(start), rid)
+		ch := z.prepareCommonLogFields(c, time.Now().Sub(start))
 		logger.Info("Request fault", append(ch, zap.Error(stack),
 			stack.Field())...)
 	}()
@@ -197,7 +218,7 @@ func (z *traceAndLogMiddleware) instrumentRequest(c echo.Context) error {
 
 		// We have an error, process it
 		c.Error(err)
-		ch := z.prepareCommonLogFields(c, time.Now().Sub(start), rid)
+		ch := z.prepareCommonLogFields(c, time.Now().Sub(start))
 		httpErr, ok := err.(*echo.HTTPError)
 		if ok {
 			// HTTP errors contain a redundant code field
@@ -212,7 +233,7 @@ func (z *traceAndLogMiddleware) instrumentRequest(c echo.Context) error {
 	}
 
 	logger.Info("Request finished",
-		z.prepareCommonLogFields(c, time.Now().Sub(start), rid)...)
+		z.prepareCommonLogFields(c, time.Now().Sub(start))...)
 
 	return nil
 }

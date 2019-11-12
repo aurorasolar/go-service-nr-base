@@ -27,7 +27,9 @@ func NewMetricsSink(nrLicenseKey, appName string, suffix string,
 	harv, err := telemetry.NewHarvester(
 		telemetry.ConfigAPIKey(nrLicenseKey),
 		func(c *telemetry.Config) {
-			c.Client = client
+			if client != nil {
+				c.Client = client
+			}
 		},
 		telemetry.ConfigCommonAttributes(map[string]interface{}{
 			"app.name": appName,

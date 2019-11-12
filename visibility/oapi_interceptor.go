@@ -117,8 +117,10 @@ func (r *requestValidationAndMetrics) validateAndRunWithMetrics(ctx echo.Context
 	_ = trans.SetName(opId) // TODO: add as an attribute?
 
 	// Now that we have the opname, we can create the metric context
-	met := GetMetricsFromContext(req.Context())
-	met.OpName = opId
+	metCtx := MakeMetricContext(ctx.Request().Context(), opId)
+	met := GetMetricsFromContext(metCtx)
+	ctx.SetRequest(ctx.Request().WithContext(metCtx))
+	defer met.CopyToTransaction(trans)
 	defer r.sink.SubmitSegmentMetrics(met)
 
 	// We set the service fault counter immediately to 1
