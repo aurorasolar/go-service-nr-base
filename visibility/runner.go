@@ -3,23 +3,24 @@ package visibility
 import (
 	"context"
 	"fmt"
-	"github.com/aurorasolar/go-service-nr-base/utils"
 	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent/_integrations/logcontext"
 	"go.uber.org/zap"
 	"runtime"
 )
 
-const NewRelicAppContext = "NewRelicApp"
+func getLogLinkingMetadata(trans newrelic.Transaction) []zap.Field {
+	md := trans.GetLinkingMetadata()
 
-func AppFromContext(ctx context.Context) newrelic.Application {
-	value := ctx.Value(NewRelicAppContext)
-	res, ok := value.(newrelic.Application)
-	utils.PanicIfF(!ok, "No New Relic attached")
-	return res
-}
-
-func MakeAppContext(ctx context.Context, application newrelic.Application) context.Context {
-	return context.WithValue(ctx, NewRelicAppContext, application)
+	fields := []zap.Field{
+		zap.String(logcontext.KeyTraceID, md.TraceID),
+		zap.String(logcontext.KeySpanID, md.SpanID),
+		zap.String(logcontext.KeyEntityName, md.EntityName),
+		zap.String(logcontext.KeyEntityType, md.EntityType),
+		zap.String(logcontext.KeyEntityGUID, md.EntityGUID),
+		zap.String(logcontext.KeyHostname, md.Hostname),
+	}
+	return fields
 }
 
 // RunInstrumented() traces the provided synchronous function by
@@ -65,12 +66,7 @@ func RunInstrumented(ctx context.Context, name string, app newrelic.Application,
 		}
 	}()
 
-	tid := newTrans.GetTraceMetadata().TraceID
-	if tid == "" {
-		tid = "AnonymousReq"
-	}
-
-	logger = logger.Named(name).With(zap.String("RequestID", tid))
+	logger = logger.Named(name).With(getLogLinkingMetadata(newTrans)...)
 	c := newrelic.NewContext(ctx, newTrans) // Create context with tracing attached
 	c = ImbueContext(c, logger)             // Save logger into the context
 	c = MakeMetricContext(c, name)          // Save metrics into the context

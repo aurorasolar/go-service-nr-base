@@ -12,7 +12,6 @@ import (
 	. "github.com/aurorasolar/go-service-nr-base/utils"
 	"github.com/labstack/echo/v4"
 	newrelic "github.com/newrelic/go-agent"
-	"github.com/newrelic/go-agent/_integrations/logcontext"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -91,16 +90,7 @@ func (z *traceAndLogMiddleware) attachXrayTrace(c echo.Context) newrelic.Transac
 func (z *traceAndLogMiddleware) createLogger(c echo.Context,
 	trans newrelic.Transaction) *zap.Logger {
 
-	md := trans.GetLinkingMetadata()
-
-	fields := []zap.Field{
-		zap.String(logcontext.KeyTraceID, md.TraceID),
-		zap.String(logcontext.KeySpanID, md.SpanID),
-		zap.String(logcontext.KeyEntityName, md.EntityName),
-		zap.String(logcontext.KeyEntityType, md.EntityType),
-		zap.String(logcontext.KeyEntityGUID, md.EntityGUID),
-		zap.String(logcontext.KeyHostname, md.Hostname),
-	}
+	fields := getLogLinkingMetadata(trans)
 
 	// TODO: defend against large headers
 	h := c.Request().Header
