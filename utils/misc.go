@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -76,4 +77,20 @@ func GetFreeTcpPort() (int, error) {
 	}
 	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func MustJsonIndent(obj interface{}, indent string) string {
+	data, err := json.MarshalIndent(obj, "", indent)
+	if err != nil {
+		panic(err.Error())
+	}
+	return string(data)
+}
+
+func MustJson(obj interface{}) string {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		panic(err.Error())
+	}
+	return string(data)
 }

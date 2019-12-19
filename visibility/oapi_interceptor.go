@@ -4,17 +4,24 @@ package visibility
 // to New Relic and the initial request validation.
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	. "github.com/aurorasolar/go-service-nr-base/utils"
 	newrelic "github.com/newrelic/go-agent"
+	"go.uber.org/zap"
+	"io/ioutil"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
 )
+
+const MaxBodyThreshold = 2048
 
 type AuthValidatorFunc func(e echo.Context, input *openapi3filter.AuthenticationInput) error
 
@@ -130,6 +137,12 @@ func (r *requestValidationAndMetrics) validateAndRunWithMetrics(ctx echo.Context
 	bench := met.Benchmark("Time")
 	defer bench.Done()
 
+	// Log the request
+	err = r.logRequest(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Run the next handler in the chain
 	err = r.next(ctx)
 
@@ -139,4 +152,36 @@ func (r *requestValidationAndMetrics) validateAndRunWithMetrics(ctx echo.Context
 	}
 
 	return err
+}
+
+func (r *requestValidationAndMetrics) logRequest(ctx echo.Context) error {
+	req := ctx.Request()
+	var data []byte
+	var err error
+
+	if data, err = ioutil.ReadAll(req.Body); err != nil {
+		return err
+	}
+	// Put the data back into the input
+	req.Body = ioutil.NopCloser(bytes.NewReader(data))
+
+	// Log the request body if it's not too large
+	if len(data) <= MaxBodyThreshold {
+		var jsData map[string]interface{}
+		err = json.Unmarshal(data, &jsData)
+		var field zap.Field
+		if err != nil {
+			if utf8.ValidString(string(data)) {
+				field = zap.String("body-string", string(data))
+			} else {
+				field = zap.Binary("body-data", data)
+			}
+		} else {
+			field = zap.Reflect("body-json", jsData)
+		}
+		CL(req.Context()).Info("Request body", zap.Int("size", len(data)), field)
+	} else {
+		CL(req.Context()).Info("Request body", zap.Int("size", len(data)))
+	}
+	return nil
 }

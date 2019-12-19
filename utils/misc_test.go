@@ -53,3 +53,22 @@ func TestGetFreeTcpPort(t *testing.T) {
 
 	assert.NotEqual(t, port, port2)
 }
+
+func TestMustJson(t *testing.T) {
+	args := map[string]interface{} {
+		"Hello": "world",
+	}
+	json := MustJson(args)
+	assert.Equal(t, `{"Hello":"world"}`, json)
+
+	json = MustJsonIndent(args, " ")
+	assert.Equal(t, "{\n \"Hello\": \"world\"\n}", json)
+
+	// Test panics
+	argsBad := map[interface{}]interface{} {
+		"Hello": "world",
+	}
+
+	assert.Panics(t, func() {MustJson(argsBad)})
+	assert.Panics(t, func() {MustJsonIndent(argsBad, " ")})
+}
