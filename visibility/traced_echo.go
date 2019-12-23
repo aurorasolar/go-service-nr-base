@@ -84,6 +84,11 @@ func (z *traceAndLogMiddleware) attachXrayTrace(c echo.Context) newrelic.Transac
 	// while storing the regular one in annotations
 	c.Request().Header.Set(echo.HeaderXRequestID, trans.GetTraceMetadata().TraceID)
 
+	// Add the tracing payload to the response headers
+	if p := trans.CreateDistributedTracePayload().HTTPSafe(); "" != p {
+		c.Response().Header().Add(newrelic.DistributedTracePayloadHeader, p)
+	}
+
 	return trans
 }
 
